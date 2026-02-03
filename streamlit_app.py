@@ -7,13 +7,21 @@ from datetime import date
 # 頁面設定
 st.set_page_config(page_title="大豐環保-危害告知系統", layout="centered")
 
-# CSS 美化：調整為深色背景、白色文字
+# CSS 美化
 st.markdown("""
     <style>
-    /* 滾動視窗背景改為深色，文字改為白色 */
+    /* 廠區標頭字體 */
+    .factory-header {
+        font-size: 22px;
+        color: #2E7D32;
+        font-weight: bold;
+        margin-bottom: -10px;
+    }
+    
+    /* 滾動視窗背景深色，文字白色 */
     [data-testid="stVerticalBlock"] > div:has(div.rule-text-white) {
         background-color: #333333 !important;
-        padding: 10px;
+        padding: 15px;
         border-radius: 10px;
     }
     
@@ -21,10 +29,10 @@ st.markdown("""
         font-size: 18px !important;
         font-weight: 400;
         line-height: 1.7;
-        color: #FFFFFF !important;  /* 純白色文字 */
+        color: #FFFFFF !important;
         margin-bottom: 12px;
         padding-bottom: 8px;
-        border-bottom: 1px solid #555555; /* 深灰色分隔線 */
+        border-bottom: 1px solid #555555;
     }
     
     .stButton>button {
@@ -35,13 +43,11 @@ st.markdown("""
         background-color: #2E7D32;
         color: white;
     }
-    
-    .stCheckbox label {
-        font-size: 18px !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
+# --- 標題區 ---
+st.markdown('<div class="factory-header">大豐環保 (全興廠)</div>', unsafe_allow_html=True)
 st.title("🚧 承攬商施工安全危害告知")
 st.info("請施作人員確實填寫資訊，閱讀安全守則並簽名。")
 
@@ -67,7 +73,6 @@ with st.container(border=True):
 st.subheader("📋 3. 安全衛生規定 / Safety Rules")
 st.caption("請向下滾動閱讀完畢 (白色文字)：")
 
-# 使用 HTML 包裝，指定白色類別
 rules_html = """
 <div class='rule-text-white'>一、為防止尖銳物(玻璃、鐵釘、廢棄針頭)切割危害，應佩戴安全手套、安全鞋及防護具。</div>
 <div class='rule-text-white'>二、設備維修需經主管同意並掛「維修中/保養中」牌。</div>
@@ -86,7 +91,6 @@ rules_html = """
 <div class='rule-text-white'>十五、人員行經廠內出入口應行走人行道，遵守「停、看、行」。</div>
 """
 
-# 這裡設定深色背景視窗
 with st.container(height=350, border=True):
     st.markdown(rules_html, unsafe_allow_html=True)
 
