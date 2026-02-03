@@ -7,22 +7,31 @@ from datetime import date
 # 頁面設定
 st.set_page_config(page_title="大豐環保-危害告知系統", layout="centered")
 
-# CSS 美化：增加字體大小與行高
+# CSS 美化：調整顏色與視覺層次
 st.markdown("""
     <style>
-    /* 調整滾動視窗內的文字大小 */
+    /* 調整規定文字：顏色改為深灰，增加字體平滑度 */
     .rule-text {
-        font-size: 20px !important;
-        font-weight: 500;
-        line-height: 1.8;
-        color: #333333;
-        margin-bottom: 15px;
+        font-size: 18px !important;
+        font-weight: 400;
+        line-height: 1.7;
+        color: #555555;  /* 柔和的深灰色 */
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f0f0f0; /* 增加細線分隔 */
     }
     .stButton>button {
         width: 100%;
         border-radius: 5px;
         height: 3.5em;
         font-size: 18px !important;
+        background-color: #4CAF50;
+        color: white;
+    }
+    /* 讓勾選框文字也明顯一點 */
+    .stCheckbox label {
+        font-size: 18px !important;
+        color: #333333;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -48,11 +57,11 @@ with st.container(border=True):
     hazards = ["墜落", "感電", "物體飛落", "火災爆炸", "交通事故", "缺氧窒息", "化學品接觸", "捲入夾碎"]
     selected_hazards = st.multiselect("勾選本次作業相關危害項目", hazards)
 
-# --- 3. 安全衛生規定區 (大字體、條列式) ---
+# --- 3. 安全衛生規定區 ---
 st.subheader("📋 3. 安全衛生規定 / Safety Rules")
-st.caption("請向下滾動閱讀完畢 (字體已放大)：")
+st.caption("請向下滾動閱讀完畢：")
 
-# 使用 HTML 包裝每一條規定，確保字體夠大
+# 使用 HTML 包裝，顏色已調淡
 rules_html = """
 <div class='rule-text'>一、為防止尖銳物(玻璃、鐵釘、廢棄針頭)切割危害，應佩戴安全手套、安全鞋及防護具。</div>
 <div class='rule-text'>二、設備維修需經主管同意並掛「維修中/保養中」牌。</div>
@@ -74,7 +83,6 @@ rules_html = """
 with st.container(height=350, border=True):
     st.markdown(rules_html, unsafe_allow_html=True)
 
-# 已閱讀確認勾選 (字體也稍微加大)
 st.markdown("####")
 read_confirmed = st.checkbox("**我已充分閱讀並同意遵守上述安全衛生規定**")
 
@@ -94,18 +102,17 @@ st.write("---")
 # --- 提交邏輯 ---
 if st.button("確認提交告知單", type="primary", disabled=not read_confirmed):
     if not company or not worker_name or work_location == "請選擇地點":
-        st.error("❌ 請填寫公司、姓名並選擇施工地點！")
+        st.error("❌ 請填寫基本資訊！")
     elif not selected_hazards:
-        st.warning("❌ 請至少勾選一項危害因素！")
+        st.warning("❌ 請勾選危害因素！")
     elif canvas_result.image_data is None:
-        st.error("❌ 請完成簽名後再提交！")
+        st.error("❌ 請完成簽名！")
     else:
-        # 這裡未來將加入寫入 Google Sheets 的程式碼
-        st.success(f"✅ {worker_name} 同學，告知單提交成功！")
+        st.success(f"✅ 提交成功！")
         st.balloons()
 
 if not read_confirmed:
-    st.warning("👈 請先閱讀規定並勾選「我已閱讀並同意」方可提交。")
+    st.warning("👈 請先閱讀規定並勾選同意。")
 
 st.markdown("---")
 st.caption("大豐環保科技股份有限公司 - 工安管理系統")
