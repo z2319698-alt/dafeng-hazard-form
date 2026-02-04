@@ -51,26 +51,4 @@ HAZARD_DETAILS = {
 }
 
 # --- 頁面 1：危害告知單 ---
-if st.session_state.current_page == "1. 施工安全危害告知單":
-    st.markdown('<div class="factory-header">大豐環保 (全興廠)</div>', unsafe_allow_html=True)
-    st.title("🚧 承攬商施工安全危害告知")
-    
-    with st.container(border=True):
-        st.subheader("👤 1. 基本資訊")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.session_state.company = st.text_input("承攬商名稱", key="comp_in")
-            st.session_state.worker_name = st.text_input("施作人員姓名", key="name_in")
-        with col2:
-            st.session_state.work_date = st.date_input("施工日期", value=date.today())
-            st.session_state.location = st.selectbox("施工地點", ["請選擇", "粉碎課", "造粒課", "玻璃屋", "地磅室", "廠內周邊設施"])
-
-    with st.container(border=True):
-        st.subheader("⚠️ 2. 危害因素告知")
-        st.session_state.selected_hazards = st.multiselect("勾選本次作業危害項目", list(HAZARD_DETAILS.keys()))
-
-    st.subheader("📋 3. 安全衛生規定")
-    rules = [
-        "一、為防止尖銳物(玻璃、鐵釘、廢棄針頭)切割危害，應佩戴安全手套、安全鞋及防護具。",
-        "二、設備維修需經主管同意並掛「維修中/保養中」牌。",
-        "三
+if st.session_
