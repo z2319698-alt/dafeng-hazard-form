@@ -96,7 +96,7 @@ elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
             st.session_state.current_page = "4. 特殊危害作業許可證"
         st.rerun()
 
-# --- 3. 動火作業許可證 (依PDF補全檢查表，其餘不動) ---
+# --- 3. 動火作業許可證 (依PDF補齊檢查項目) ---
 elif st.session_state.current_page == "3. 動火作業許可證":
     st.title("🔥 動火作業許可證")
     with st.container(border=True):
@@ -111,16 +111,15 @@ elif st.session_state.current_page == "3. 動火作業許可證":
             f_date = c1.date_input("日期", value=date.today(), key="f_date")
             f_start = c2.number_input("起(時)", 0, 23, 8, key="f_start")
             f_end = c3.number_input("迄(時)", 0, 23, 17, key="f_end")
-    
-    st.subheader("✅ 動火檢查表 (依PDF完整項目)")
+    st.subheader("✅ 動火檢查表")
     h_col1, h_col2, h_col3, h_col4 = st.columns([4, 1, 1, 1])
     h_col1.write("**檢查重點**")
     h_col2.write("承攬商")
     h_col3.write("監工")
     h_col4.write("環安")
-
-    # 依照PDF動火檢查表完整項目
-    fire_checks = [
+    
+    # 根據 PDF 完整補全動火檢查項目
+    check_items = [
         "3公尺內備有可使用/正常操作之自動灑水或手提滅火器",
         "防爆區或侷限空間內作業由工安單位測定可燃性氣體濃度",
         "動火時旁邊有警戒人員",
@@ -128,16 +127,15 @@ elif st.session_state.current_page == "3. 動火作業許可證":
         "隔離或中斷該區域之火警偵測器",
         "清除工作區域週邊11公尺內的可燃物或使用防火毯覆蓋保護",
         "工作區域易燃性地面予以防火保護",
-        "工作結束後，施工區域及週邊巡視、確認無火災之虞(收工後勾選)"
+        "工作結束後，施工區域及週邊巡視、確認無火災之虞"
     ]
-
-    for idx, item in enumerate(fire_checks):
+    
+    for idx, item in enumerate(check_items):
         c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
         c1.write(f"{idx+1}. {item}")
         c2.checkbox("", key=f"f_v_{idx}", label_visibility="collapsed")
         c3.checkbox("", key=f"f_s_{idx}", label_visibility="collapsed")
         c4.checkbox("", key=f"f_h_{idx}", label_visibility="collapsed")
-
     st.divider()
     st.subheader("✍️ 簽名欄位")
     sig1, sig2 = st.columns(2)
@@ -152,7 +150,7 @@ elif st.session_state.current_page == "3. 動火作業許可證":
         st.session_state.current_page = "1. 施工安全危害告知單"
         st.rerun()
 
-# --- 4. 特殊危害作業許可證 (保持不動) ---
+# --- 4. 特殊危害作業許可證 (完全不動) ---
 elif st.session_state.current_page == "4. 特殊危害作業許可證":
     st.title("🛡️ 特殊危害作業許可證")
     with st.container(border=True):
@@ -162,8 +160,10 @@ elif st.session_state.current_page == "4. 特殊危害作業許可證":
             st.write("**作業類別**")
             type_cols = st.columns(2)
             spec_types = ["局限空間", "吊掛", "高架", "危險管路拆卸鑽孔", "送電作業"]
+            # 建立勾選狀態字典
+            selected_types = {}
             for i, t in enumerate(spec_types):
-                type_cols[i % 2].checkbox(t, key=f"spec_type_{t}")
+                selected_types[t] = type_cols[i % 2].checkbox(t, key=f"spec_type_{t}")
             st.text_input("連絡電話", key="spec_tel")
         with col2:
             st.number_input("施工人數", min_value=1, step=1, key="spec_workers")
@@ -180,20 +180,31 @@ elif st.session_state.current_page == "4. 特殊危害作業許可證":
     sh_col3.write("監工")
     sh_col4.write("環安")
 
-    spec_checks = [
-        "指派一人以上之安全警戒人員，隨時監視、聯絡作業?",
-        "工安單位測定作業場所空氣中氧氣濃度在19%以上?",
-        "備有空氣呼吸氣器、安全帶(索)等防護器具使勞工確實戴用?",
-        "告知作業之勞工施工區域內之潛在危害性?",
-        "作業區域已設置三角錐或警示帶隔離，嚴禁無關人員進入?"
-    ]
+    # 定義各類別對應的檢查清單 (根據PDF)
+    check_data = {
+        "局限空間": ["指派安全警戒人員，隨時監視?", "氧氣濃度在19%以上?", "測定危害物濃度在容許值以下?", "備有空氣呼吸器、安全帶供戴用?", "告知勞工施工區域潛在危害?"],
+        "吊掛": ["吊車具合格證且吊鉤有防脫裝置?", "吊索、吊帶無受損及變形?", "嚴禁吊物下方站人並設警戒區?", "指派指揮人員佩戴紅旗/哨子?"],
+        "高架": ["1.8公尺以上確實佩戴安全帶?", "施工架設置護欄及掃腳板?", "下方設置警示區域及看板?"],
+        "危險管路拆卸鑽孔": ["確實關閉來源閥門並掛牌?", "管內殘壓/殘液排空確認?", "配戴防護面罩/耐酸鹼手套?"],
+        "送電作業": ["開關箱鎖定並掛維修告知牌?", "使用絕緣手套/絕緣墊?", "驗電筆確認無殘電?"]
+    }
 
-    for idx, item in enumerate(spec_checks):
-        c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
-        c1.write(f"{idx+1}. {item}")
-        c2.checkbox("", key=f"s_v_{idx}", label_visibility="collapsed")
-        c3.checkbox("", key=f"s_s_{idx}", label_visibility="collapsed")
-        c4.checkbox("", key=f"s_h_{idx}", label_visibility="collapsed")
+    # 動態顯示勾選類別的檢查項
+    has_checked_any = False
+    for t_name, is_selected in selected_types.items():
+        if is_selected:
+            has_checked_any = True
+            st.markdown(f"**📍 {t_name} 檢查項目**")
+            items = check_data.get(t_name, [])
+            for idx, item in enumerate(items):
+                c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
+                c1.write(f"- {item}")
+                c2.checkbox("", key=f"s_v_{t_name}_{idx}", label_visibility="collapsed")
+                c3.checkbox("", key=f"s_s_{t_name}_{idx}", label_visibility="collapsed")
+                c4.checkbox("", key=f"s_h_{t_name}_{idx}", label_visibility="collapsed")
+
+    if not has_checked_any:
+        st.info("請先於上方勾選「作業類別」以顯示對應檢查表")
 
     st.divider()
     st.subheader("✍️ 簽名核可")
