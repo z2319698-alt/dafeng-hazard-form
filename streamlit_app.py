@@ -1,170 +1,83 @@
 import streamlit as st
 import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 from streamlit_drawable_canvas import st_canvas
 from datetime import date
-import io
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-from fpdf import FPDF
 
-# --- 1. Google Drive 連線邏輯 ---
-def get_drive_service():
-    """透過 secrets.toml 取得 Google Drive 連線權限"""
-    try:
-        # 讀取 Secrets
-        info = dict(st.secrets["gcp_service_account"])
-        # 處理私鑰換行符號的終極防護
-        if "private_key" in info:
-            info["private_key"] = info["private_key"].replace("\\n", "\n")
-            
-        credentials = service_account.Credentials.from_service_account_info(info)
-        scoped_credentials = credentials.with_scopes(['https://www.googleapis.com/auth/drive.file'])
-        return build('drive', 'v3', credentials=scoped_credentials)
-    except Exception as e:
-        st.error(f"⚠️ 金鑰連線失敗，請檢查 Secrets 格式: {e}")
-        return None
+# 頁面設定
+st.set_page_config(page_title="大豐環保-工安管理系統", layout="centered")
 
-def upload_to_drive(file_content, file_name):
-    """將生成的 PDF 上傳至指定的 Google Drive 資料夾"""
-    service = get_drive_service()
-    if not service: return None
-    
-    # 你提供的 Google Drive 資料夾 ID
-    folder_id = '1EHPRmig_vFpRS8cgz-8FsG88_LhT_JY5' 
-    
-    file_metadata = {
-        'name': file_name,
-        'parents': [folder_id]
+# 初始化記憶狀態
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "1. 施工安全危害告知單"
+if 'selected_hazards' not in st.session_state:
+    st.session_state.selected_hazards = []
+
+# CSS 美化
+st.markdown("""
+    <style>
+    .factory-header { font-size: 22px; color: #2E7D32; font-weight: bold; margin-bottom: 5px; }
+    [data-testid="stVerticalBlock"] > div:has(div.rule-text-white) {
+        background-color: #333333 !important; padding: 15px; border-radius: 10px;
     }
-    media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='application/pdf')
+    .rule-text-white { font-size: 18px; color: #FFFFFF; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #555555; }
+    .hazard-notice { color: #FFEB3B !important; font-weight: bold; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3.5em; background-color: #2E7D32; color: white; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 左側導覽列 ---
+st.sidebar.title("📋 表單選單")
+pages = ["1. 施工安全危害告知單", "2. 承攬商工具箱會議紀錄表", "3. 動火作業許可證", "4. 特殊危害作業許可證"]
+for p in pages:
+    if st.sidebar.button(p):
+        st.session_state.current_page = p
+
+# --- 危害資料庫 ---
+HAZARD_DETAILS = {
+    "墜落": "● [墜落防護]：1.8公尺以上作業務必確實佩戴安全帶及安全帽。",
+    "感電": "● [電力安全]：電路維修需斷電掛牌，嚴禁帶電作業。",
+    "物體飛落": "● [防飛落]：施工區域下方應設警戒線，高處工具應有繩索繫留。",
+    "火災爆炸": "● [動火管制]：動火區域3公尺內需備妥滅火器，清理易燃物。",
+    "交通事故": "● [交通安全]：場內行駛嚴禁超速，轉彎處需減速鳴笛。",
+    "缺氧窒息": "● [侷限空間]：進入前務必進行氧氣測量，作業中需全程通訊。",
+    "化學品接觸": "● [化學防護]：需確實佩戴防護面罩、耐酸鹼手套。",
+    "捲入夾碎": "● [防捲夾]：操作旋轉設備嚴禁佩戴手套，維修前需確實停機。"
+}
+
+# --- 頁面 1：危害告知單 ---
+if st.session_state.current_page == "1. 施工安全危害告知單":
+    st.markdown('<div class="factory-header">大豐環保 (全興廠)</div>', unsafe_allow_html=True)
+    st.title("🚧 承攬商施工安全危害告知")
     
-    try:
-        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        return file.get('id')
-    except Exception as e:
-        st.error(f"❌ 上傳 Google Drive 失敗: {e}")
-        return None
-
-# --- 2. 頁面設定 ---
-st.set_page_config(page_title="大豐環保安全作業管理系統", layout="wide")
-st.title("🛡️ 大豐環保安全作業管理系統")
-
-# 定義分頁
-tab1, tab2, tab3 = st.tabs(["📋 1. 環境檢查", "🏗️ 2. 施工申請", "🔥 3. 動火作業許可"])
-
-# --- Tab 1: 環境檢查 (保留完整欄位) ---
-with tab1:
-    st.header("每日環境安全檢查")
-    with st.form("env_form"):
+    with st.container(border=True):
+        st.subheader("👤 1. 基本資訊")
         col1, col2 = st.columns(2)
         with col1:
-            check_date = st.date_input("檢查日期", date.today())
-            area = st.selectbox("檢查區域", ["一廠", "二廠", "辦公室", "戶外場地"])
+            st.session_state.company = st.text_input("承攬商名稱", placeholder="請輸入公司")
+            st.session_state.worker_name = st.text_input("施作人員姓名", placeholder="請輸入姓名")
         with col2:
-            inspector = st.text_input("檢查人員")
-        
-        st.write("**檢查項目：**")
-        env_1 = st.checkbox("地面是否有積水或油漬？")
-        env_2 = st.checkbox("消防栓/滅火器是否無遮擋？")
-        env_3 = st.checkbox("電線是否有裸露或過載？")
-        
-        if st.form_submit_state("提交環境檢查"):
-            st.success("環境檢查已紀錄（目前僅介面顯示）")
+            st.session_state.work_date = st.date_input("施工日期", value=date.today())
+            st.session_state.location = st.selectbox("施工地點", ["請選擇", "粉碎課", "造粒課", "玻璃屋", "地磅室", "廠內周邊設施"])
 
-# --- Tab 2: 施工申請 (保留完整欄位) ---
-with tab2:
-    st.header("施工安全申請")
-    with st.form("work_form"):
-        c1, c2 = st.columns(2)
-        with c1:
-            work_co = st.text_input("施工單位")
-            work_name = st.text_input("工程名稱")
-        with c2:
-            work_leader = st.text_input("現場負責人")
-            work_type = st.multiselect("作業類型", ["高處作業", "吊掛作業", "電氣作業", "其他"])
-        
-        if st.form_submit_state("提交施工申請"):
-            st.success("施工申請已發送（目前僅介面顯示）")
+    with st.container(border=True):
+        st.subheader("⚠️ 2. 危害因素告知")
+        st.session_state.selected_hazards = st.multiselect("勾選本次作業危害項目", list(HAZARD_DETAILS.keys()))
 
-# --- Tab 3: 動火作業許可 (最完整的功能含 PDF) ---
-with tab3:
-    st.header("🔥 動火作業許可證申請")
-    
-    # 填寫資料區
-    with st.container():
-        f_col1, f_col2 = st.columns(2)
-        with f_col1:
-            f_company = st.text_input("施工廠商名稱", key="fire_co_full")
-            f_location = st.text_input("具體動火地點", key="fire_loc_full")
-        with f_col2:
-            f_worker = st.text_input("作業負責人", key="fire_work_full")
-            f_type = st.selectbox("動火工具", ["電焊機", "氣割工具", "砂輪機", "噴燈", "其他"], key="fire_type_full")
-
-    st.subheader("✅ 動火安全檢查項目 (須全部勾選)")
-    chk_col1, chk_col2 = st.columns(2)
-    with chk_col1:
-        f_chk1 = st.checkbox("動火地點 10 公尺內已清除易燃物")
-        f_chk2 = st.checkbox("附近備有足夠且合格之滅火器")
-    with chk_col2:
-        f_chk3 = st.checkbox("已派駐現場防火監護人")
-        f_chk4 = st.checkbox("高處作業已設置防火毯遮擋火花")
-
-    st.write("---")
-    st.write("✍️ **作業負責人手寫簽名：**")
-    f_canvas = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)",
-        stroke_width=2,
-        stroke_color="#000000",
-        background_color="#eeeeee",
-        height=150,
-        key="fire_sign_canvas",
-    )
-
-    if st.button("🚀 確認提交並上傳雲端 PDF"):
-        if not f_company or not f_worker:
-            st.error("請完整填寫『施工廠商』與『負責人』！")
-        elif not (f_chk1 and f_chk2 and f_chk3 and f_chk4):
-            st.warning("所有安全檢查項目必須勾選，確保作業安全！")
-        else:
-            with st.spinner("正在產生 PDF 並同步上傳至 Google Drive..."):
-                # 1. 建立 PDF 物件
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", 'B', 16)
-                pdf.cell(200, 10, txt="DAFENG ENVIRONMENTAL PROTECTION", ln=True, align='C')
-                pdf.cell(200, 10, txt="Hot Work Permit", ln=True, align='C')
-                pdf.ln(10)
-                
-                # 2. 寫入表單內容 (目前 FPDF 預設不支援中文，先用英文標籤避免亂碼)
-                pdf.set_font("Arial", size=12)
-                pdf.cell(200, 10, txt=f"Date: {date.today()}", ln=True)
-                pdf.cell(200, 10, txt=f"Company: {f_company}", ln=True)
-                pdf.cell(200, 10, txt=f"Location: {f_location}", ln=True)
-                pdf.cell(200, 10, txt=f"Responsible: {f_worker}", ln=True)
-                pdf.cell(200, 10, txt=f"Tool Type: {f_type}", ln=True)
-                pdf.ln(5)
-                pdf.cell(200, 10, txt="Safety Checks: Passed", ln=True)
-                
-                # 3. 處理簽名 (將畫布轉圖片)
-                if f_canvas.image_data is not None:
-                    from PIL import Image
-                    img = Image.fromarray(f_canvas.image_data.astype('uint8'), 'RGBA')
-                    # 轉為 RGB
-                    white_bg = Image.new("RGB", img.size, (255, 255, 255))
-                    white_bg.paste(img, mask=img.split()[3])
-                    img_byte_arr = io.BytesIO()
-                    white_bg.save(img_byte_arr, format='JPEG')
-                    pdf.ln(5)
-                    pdf.cell(200, 10, txt="Signature:", ln=True)
-                    pdf.image(img_byte_arr, x=10, y=pdf.get_y(), w=50)
-
-                # 4. 輸出與上傳
-                pdf_bytes = pdf.output()
-                file_name = f"HotWork_{date.today()}_{f_company}.pdf"
-                drive_id = upload_to_drive(pdf_bytes, file_name)
-                
-                if drive_id:
-                    st.success(f"✅ 提交成功！檔案已存入 Google Drive")
-                    st.info(f"檔案 ID: {drive_id}")
-                    st.balloons()
+    st.subheader("📋 3. 安全衛生規定")
+    # 將 15 條規定放入列表，避免字串斷裂
+    rules = [
+        "一、為防止尖銳物(玻璃、鐵釘、廢棄針頭)切割危害，應佩戴安全手套、安全鞋及防護具。",
+        "二、設備維修需經主管同意並掛「維修中/保養中」牌。",
+        "三、場內限速 15 公里/小時，嚴禁超速。",
+        "四、工作場所禁止吸菸、飲食或飲酒。",
+        "五、操作機具需持證照且經主管同意，相關責任由借用者自負。",
+        "六、嚴禁貨叉載人。堆高機熄火需貨叉置地、拔鑰匙歸還。",
+        "七、重機作業半徑內禁止進入，17噸(含)以上作業應放三角錐。",
+        "八、1.8公尺以上高處作業或3.5噸以上車頭作業均須配戴安全帽。",
+        "九、電路維修需戴絕緣具、斷電掛牌並指派一人全程監視。",
+        "十、動火作業需主管同意、備滅火器(3公尺內)並配戴護目鏡。",
+        "十一、清運車輛啟動前應確認周遭並發出信號。",
+        "十二、開啟尾門應站側面，先開小縫確認無誤後再全面開啟。",
+        "十三、未達指定傾貨區前，嚴禁私自開啟車斗。",
+        "十四、行駛中嚴禁站立車斗，卸
