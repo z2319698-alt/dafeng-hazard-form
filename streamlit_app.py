@@ -80,4 +80,74 @@ if st.session_state.current_page == "1. 施工安全危害告知單":
         "十一、清運車輛啟動前應確認周遭並發出信號。",
         "十二、開啟尾門應站側面，先開小縫確認無誤後再全面開啟。",
         "十三、未達指定傾貨區前，嚴禁私自開啟車斗。",
-        "十四、行駛中嚴禁站立車斗，卸
+        "十四、行駛中嚴禁站立車斗，卸貨完確認車斗收妥方可駛離。",
+        "十五、人員行經廠內出入口應行走人行道，遵守「停、看、行」。"
+    ]
+    
+    full_html = ""
+    for r in rules:
+        full_html += f"<div class='rule-text-white'>{r}</div>"
+    
+    # 針對勾選項目的額外告知
+    if st.session_state.selected_hazards:
+        full_html += "<div class='rule-text-white hazard-notice' style='border-top: 2px solid #FFEB3B; padding-top: 10px;'>▼ 您勾選項目的特別注意事項：</div>"
+        for h in st.session_state.selected_hazards:
+            full_html += f"<div class='rule-text-white hazard-notice'>{HAZARD_DETAILS[h]}</div>"
+
+    with st.container(height=380, border=True):
+        st.markdown(full_html, unsafe_allow_html=True)
+
+    read_ok = st.checkbox("**我已充分閱讀並同意遵守上述所有規定**")
+    
+    st.subheader("✍️ 4. 受告知人簽名")
+    st_canvas(stroke_width=3, stroke_color="#000", background_color="#eee", height=150, key="sign_h")
+
+    if st.button("確認提交告知單", disabled=not read_ok):
+        if not st.session_state.company or st.session_state.location == "請選擇":
+            st.error("❌ 請填寫完整基本資訊")
+        else:
+            st.success("✅ 告知單已送出，跳轉至工具箱會議紀錄...")
+            st.session_state.current_page = "2. 承攬商工具箱會議紀錄表"
+            st.rerun()
+
+# --- 頁面 2：工具箱會議 (其餘頁面邏輯完全不動) ---
+elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
+    st.title("📝 承攬商工具箱會議紀錄表")
+    with st.container(border=True):
+        st.write(f"**廠商:** {st.session_state.get('company','')}")
+        st.write(f"**施工位置:** {st.session_state.get('location','')}")
+        st.info(f"今日危害告知項目: {', '.join(st.session_state.selected_hazards)}")
+        st.text_input("工程內容", placeholder="請輸入本日施工簡述")
+        st.multiselect("本日防護具檢查", ["安全帽", "安全鞋", "反光背心", "安全帶", "防護手套"])
+    st.subheader("✍️ 會議簽到")
+    st_canvas(stroke_width=3, background_color="#eee", height=150, key="sign_t")
+    if st.button("確認送出會議紀錄"):
+        if "火災爆炸" in st.session_state.selected_hazards:
+            st.session_state.current_page = "3. 動火作業許可證"
+        elif any(x in st.session_state.selected_hazards for x in ["墜落", "感電", "缺氧窒息", "化學品接觸"]):
+            st.session_state.current_page = "4. 特殊危害作業許可證"
+        else:
+            st.success("流程已完成！")
+            st.session_state.current_page = "1. 施工安全危害告知單"
+        st.rerun()
+
+# --- 頁面 3：動火作業 ---
+elif st.session_state.current_page == "3. 動火作業許可證":
+    st.title("🔥 動火作業許可證")
+    st.error("⚠ 此作業涉及火災爆炸風險，請完成核對")
+    st.checkbox("3公尺內備有滅火器")
+    st.checkbox("清除週邊11公尺內可燃物")
+    st_canvas(stroke_width=3, background_color="#eee", height=150, key="sign_f")
+    if st.button("完成動火申請"):
+        st.session_state.current_page = "1. 施工安全危害告知單"
+        st.rerun()
+
+# --- 頁面 4：特殊危害 ---
+elif st.session_state.current_page == "4. 特殊危害作業許可證":
+    st.title("🛡️ 特殊危害作業許可證")
+    st.warning(f"涉及高風險項目: {st.session_state.selected_hazards}")
+    st.checkbox("指派一人以上安全警戒人員")
+    st_canvas(stroke_width=3, background_color="#eee", height=150, key="sign_s")
+    if st.button("完成特殊危害申請"):
+        st.session_state.current_page = "1. 施工安全危害告知單"
+        st.rerun()
