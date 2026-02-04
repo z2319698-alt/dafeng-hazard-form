@@ -7,7 +7,7 @@ from datetime import date
 # 頁面設定
 st.set_page_config(page_title="大豐環保-工安管理系統", layout="centered")
 
-# 初始化記憶狀態 (Session State)
+# 初始化記憶狀態
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "1. 施工安全危害告知單"
 if 'selected_hazards' not in st.session_state:
@@ -28,12 +28,7 @@ st.markdown("""
 
 # --- 左側導覽列 ---
 st.sidebar.title("📋 表單選單")
-pages = [
-    "1. 施工安全危害告知單", 
-    "2. 承攬商工具箱會議紀錄表", 
-    "3. 動火作業許可證", 
-    "4. 特殊危害作業許可證"
-]
+pages = ["1. 施工安全危害告知單", "2. 承攬商工具箱會議紀錄表", "3. 動火作業許可證", "4. 特殊危害作業許可證"]
 for p in pages:
     if st.sidebar.button(p):
         st.session_state.current_page = p
@@ -51,4 +46,32 @@ HAZARD_DETAILS = {
 }
 
 # --- 頁面 1：危害告知單 ---
-if st.session_
+if st.session_state.current_page == "1. 施工安全危害告知單":
+    st.markdown('<div class="factory-header">大豐環保 (全興廠)</div>', unsafe_allow_html=True)
+    st.title("🚧 承攬商施工安全危害告知")
+    
+    with st.container(border=True):
+        st.subheader("👤 1. 基本資訊")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.company = st.text_input("承攬商名稱", placeholder="請輸入公司")
+            st.session_state.worker_name = st.text_input("施作人員姓名", placeholder="請輸入姓名")
+        with col2:
+            st.session_state.work_date = st.date_input("施工日期", value=date.today())
+            st.session_state.location = st.selectbox("施工地點", ["請選擇", "粉碎課", "造粒課", "玻璃屋", "地磅室", "廠內周邊設施"])
+
+    with st.container(border=True):
+        st.subheader("⚠️ 2. 危害因素告知")
+        st.session_state.selected_hazards = st.multiselect("勾選本次作業危害項目", list(HAZARD_DETAILS.keys()))
+
+    st.subheader("📋 3. 安全衛生規定")
+    rules = [
+        "一、為防止尖銳物(玻璃、鐵釘、廢棄針頭)切割危害，應佩戴安全手套、安全鞋及防護具。",
+        "二、設備維修需經主管同意並掛「維修中/保養中」牌。",
+        "三、場內限速 15 公里/小時，嚴禁超速。",
+        "四、工作場所禁止吸菸、飲食或飲酒。",
+        "五、操作機具需持證照且經主管同意，相關責任由借用者自負。",
+        "六、嚴禁貨叉載人。堆高機熄火需貨叉置地、拔鑰匙歸還。",
+        "七、重機作業半徑內禁止進入，17噸(含)以上作業應放三角錐。",
+        "八、1.8公尺以上高處作業或3.5噸以上車頭作業均須配戴安全帽。",
+        "九、電路維修需戴絕緣具
