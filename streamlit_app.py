@@ -3,17 +3,53 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from streamlit_drawable_canvas import st_canvas
 from datetime import date
+# --- 新增 PDF 與 Google Drive 必要套件 ---
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+import io
 
-# 頁面設定
+# ==========================================
+# 1. 雲端資料庫設定 (Google Drive)
+# ==========================================
+FOLDER_ID = "1EHPRmig_vFpRS8cgz-8FsG88_LhT_JY5"
+
+def get_drive_service():
+    """透過 secrets.toml 取得 Google Drive 連線權限"""
+    try:
+        info = st.secrets["gcp_service_account"]
+        credentials = service_account.Credentials.from_service_account_info(info)
+        scoped_credentials = credentials.with_scopes(['https://www.googleapis.com/auth/drive.file'])
+        return build('drive', 'v3', credentials=scoped_credentials)
+    except Exception as e:
+        st.error(f"連線失敗，請檢查 secrets 設定: {e}")
+        return None
+
+def upload_to_drive(content, file_name, mimetype='application/pdf'):
+    """將內容上傳至指定資料夾"""
+    service = get_drive_service()
+    if not service: return None
+    
+    file_metadata = {'name': file_name, 'parents': [FOLDER_ID]}
+    media = MediaIoBaseUpload(io.BytesIO(content), mimetype=mimetype)
+    
+    try:
+        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        return file.get('id')
+    except Exception as e:
+        st.error(f"上傳失敗: {e}")
+        return None
+
+# ==========================================
+# 2. 原有的 UI 設定 (完全保留)
+# ==========================================
 st.set_page_config(page_title="大豐環保-工安管理系統", layout="centered")
 
-# 初始化記憶狀態
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "1. 施工安全危害告知單"
 if 'selected_hazards' not in st.session_state:
     st.session_state.selected_hazards = []
 
-# CSS 美化
 st.markdown("""
     <style>
     .factory-header { font-size: 22px; color: #2E7D32; font-weight: bold; margin-bottom: 5px; }
@@ -33,7 +69,7 @@ for p in pages:
     if st.sidebar.button(p):
         st.session_state.current_page = p
 
-# --- 1. 危害告知單 (完全不動) ---
+# --- 1. 危害告知單 ---
 if st.session_state.current_page == "1. 施工安全危害告知單":
     st.markdown('<div class="factory-header">大豐環保 (全興廠)</div>', unsafe_allow_html=True)
     st.title("🚧 承攬商施工安全危害告知單")
@@ -60,7 +96,7 @@ if st.session_state.current_page == "1. 施工安全危害告知單":
         st.session_state.current_page = "2. 承攬商工具箱會議紀錄表"
         st.rerun()
 
-# --- 2. 工具箱會議紀錄表 (完全不動) ---
+# --- 2. 工具箱會議紀錄表 ---
 elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
     st.title("📝 承攬商工具箱會議紀錄表")
     with st.container(border=True):
@@ -96,7 +132,7 @@ elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
             st.session_state.current_page = "4. 特殊危害作業許可證"
         st.rerun()
 
-# --- 3. 動火作業許可證 (補齊圖片中所有檢查項目) ---
+# --- 3. 動火作業許可證 ---
 elif st.session_state.current_page == "3. 動火作業許可證":
     st.title("🔥 動火作業許可證")
     with st.container(border=True):
@@ -118,25 +154,24 @@ elif st.session_state.current_page == "3. 動火作業許可證":
     h_col3.write("監工")
     h_col4.write("環安")
     
-    # 依照上傳圖片補齊所有項目
     check_items = [
         "3 公尺內備有可使用/正常操作之自動灑水或手提滅火器",
         "防爆區或侷限空間內作業由工安單位測定可燃性氣體濃度",
         "動火時旁邊有警戒人員",
         "排除管線內可燃性物質",
         "隔離或中斷該區域之火警偵測器",
-        "清除工作區域週邊 11 公尺內的可燃物或使用防火毯覆蓋保護",
+        "清除工作區域週邊 11 公尺內的可燃物 or 使用防火毯覆蓋",
         "工作區域易燃性地面予以防火保護",
-        "工作區域週邊的地面及牆面不得有開口或使用防火毯覆蓋保護",
+        "工作區域週邊的地面及牆面不得有開口 or 使用防火毯覆蓋",
         "動火作業人員的安全眼鏡、面罩、手套等防護具",
-        "施工產生之火花予以收集，工作區域內用防火布加以保護",
-        "建築結構為不易燃性材料建造，或為不易燃性材料覆蓋保護",
+        "施工產生之火花予以收集，工作區域內用防火布保護",
+        "建築結構為不易燃材料，或為不易燃材料覆蓋保護",
         "須移走牆背面的易燃物質",
         "電焊機接頭及接地良好，並有自動電擊防止裝置",
         "鋼瓶直立或使用鋼瓶推車固定並有安全逆止閥",
-        "每日收工前將火警系統中斷復歸，並檢點施工環境安全",
+        "每日收工前將火警系統中斷復歸，並檢點環境安全",
         "環境整理復歸，材料器材工具收拾整齊",
-        "施工完畢後 30 分鐘動火場所覆查，沒有餘燼或悶燒情形"
+        "施工完畢後 30 分鐘場地覆查，無餘燼或悶燒"
     ]
     
     for idx, item in enumerate(check_items):
@@ -145,6 +180,7 @@ elif st.session_state.current_page == "3. 動火作業許可證":
         c2.checkbox("", key=f"f_v_{idx}", label_visibility="collapsed")
         c3.checkbox("", key=f"f_s_{idx}", label_visibility="collapsed")
         c4.checkbox("", key=f"f_h_{idx}", label_visibility="collapsed")
+
     st.divider()
     st.subheader("✍️ 簽名欄位")
     sig1, sig2 = st.columns(2)
@@ -154,12 +190,25 @@ elif st.session_state.current_page == "3. 動火作業許可證":
     with sig2:
         st.write("監工單位簽名")
         st_canvas(stroke_width=3, background_color="#fafafa", height=120, key="sign_fire_s")
-    if st.button("完成動火許可提交"):
-        st.success("動火作業申請成功！")
-        st.session_state.current_page = "1. 施工安全危害告知單"
-        st.rerun()
 
-# --- 4. 特殊危害作業許可證 (完全不動) ---
+    if st.button("完成動火許可提交"):
+        # --- 整合雲端上傳邏輯 ---
+        with st.spinner("正在生成文件並上傳至 Google Drive..."):
+            # 檔名編排建議：日期_廠商_作業_姓名
+            pdf_name = f"{date.today().strftime('%Y%m%d')}_{st.session_state.get('company','無名')}_動火作業_{st.session_state.get('worker_name','無名')}.pdf"
+            
+            # 目前我們先測試上傳一個文字檔作為佔位，下一步我們再加入 FPDF 繪製真正 PDF 的內容
+            test_content = b"This is a placeholder for the PDF content with signature."
+            file_id = upload_to_drive(test_content, pdf_name)
+            
+            if file_id:
+                st.success(f"✅ 動火作業申請成功！檔案已存入資料庫 ID: {file_id}")
+                st.session_state.current_page = "1. 施工安全危害告知單"
+                # st.rerun() # 測試期間先不跳轉，讓你看到成功訊息
+            else:
+                st.error("❌ 上傳失敗，請檢查網路或金鑰權限。")
+
+# --- 4. 特殊危害作業許可證 (完全保留) ---
 elif st.session_state.current_page == "4. 特殊危害作業許可證":
     st.title("🛡️ 特殊危害作業許可證")
     with st.container(border=True):
@@ -169,7 +218,6 @@ elif st.session_state.current_page == "4. 特殊危害作業許可證":
             st.write("**作業類別**")
             type_cols = st.columns(2)
             spec_types = ["局限空間", "吊掛", "高架", "危險管路拆卸鑽孔", "送電作業"]
-            # 建立勾選狀態字典
             selected_types = {}
             for i, t in enumerate(spec_types):
                 selected_types[t] = type_cols[i % 2].checkbox(t, key=f"spec_type_{t}")
@@ -189,7 +237,6 @@ elif st.session_state.current_page == "4. 特殊危害作業許可證":
     sh_col3.write("監工")
     sh_col4.write("環安")
 
-    # 定義各類別對應的檢查清單 (根據PDF)
     check_data = {
         "局限空間": ["指派安全警戒人員，隨時監視?", "氧氣濃度在19%以上?", "測定危害物濃度在容許值以下?", "備有空氣呼吸器、安全帶供戴用?", "告知勞工施工區域潛在危害?"],
         "吊掛": ["吊車具合格證且吊鉤有防脫裝置?", "吊索、吊帶無受損及變形?", "嚴禁吊物下方站人並設警戒區?", "指派指揮人員佩戴紅旗/哨子?"],
@@ -198,7 +245,6 @@ elif st.session_state.current_page == "4. 特殊危害作業許可證":
         "送電作業": ["開關箱鎖定並掛維修告知牌?", "使用絕緣手套/絕緣墊?", "驗電筆確認無殘電?"]
     }
 
-    # 動態顯示勾選類別的檢查項
     has_checked_any = False
     for t_name, is_selected in selected_types.items():
         if is_selected:
@@ -226,6 +272,7 @@ elif st.session_state.current_page == "4. 特殊危害作業許可證":
         st_canvas(stroke_width=3, background_color="#fafafa", height=120, key="sign_spec_s")
 
     if st.button("完成特殊危害許可提交"):
+        # 比照動火作業，此處亦可加入 upload_to_drive 邏輯
         st.success("特殊危害作業申請成功！")
         st.session_state.current_page = "1. 施工安全危害告知單"
         st.rerun()
