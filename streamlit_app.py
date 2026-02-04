@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
 from streamlit_drawable_canvas import st_canvas
 from datetime import date
 import io
@@ -9,35 +8,25 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from fpdf import FPDF
 
-# --- 1. Google Drive 連線設定 ---
+# --- 1. Google Drive 連線邏輯 ---
 def get_drive_service():
     try:
-        # 從 st.secrets 讀取 TOML 格式金鑰
         info = dict(st.secrets["gcp_service_account"])
-        # 修正私鑰換行符號
         if "private_key" in info:
             info["private_key"] = info["private_key"].replace("\\n", "\n")
-            
         credentials = service_account.Credentials.from_service_account_info(info)
         scoped_credentials = credentials.with_scopes(['https://www.googleapis.com/auth/drive.file'])
         return build('drive', 'v3', credentials=scoped_credentials)
     except Exception as e:
-        st.error(f"⚠️ 金鑰連線失敗: {e}")
+        st.error(f"⚠️ 連線失敗: {e}")
         return None
 
 def upload_to_drive(file_content, file_name):
     service = get_drive_service()
     if not service: return None
-    
-    # 這裡請確認你的 Google Drive 資料夾 ID 是否正確
     folder_id = '1EHPRmig_vFpRS8cgz-8FsG88_LhT_JY5' 
-    
-    file_metadata = {
-        'name': file_name,
-        'parents': [folder_id]
-    }
+    file_metadata = {'name': file_name, 'parents': [folder_id]}
     media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='application/pdf')
-    
     try:
         file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
         return file.get('id')
@@ -45,83 +34,67 @@ def upload_to_drive(file_content, file_name):
         st.error(f"❌ 上傳失敗: {e}")
         return None
 
-# --- 2. PDF 生成邏輯 ---
-def create_pdf(form_data, sig_canvas):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="DAFENG Hazard Form - Hot Work Permit", ln=True, align='C')
-    pdf.ln(10)
-    
-    pdf.set_font("Arial", size=12)
-    for key, value in form_data.items():
-        pdf.cell(200, 10, txt=f"{key}: {value}", ln=True)
-    
-    # 處理簽名圖片
-    if sig_canvas is not None and sig_canvas.image_data is not None:
-        from PIL import Image
-        import numpy as np
-        img_data = sig_canvas.image_data
-        img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
-        # 轉為 RGB 才能存入 PDF
-        bg = Image.new("RGB", img.size, (255, 255, 255))
-        bg.paste(img, mask=img.split()[3])
-        
-        img_byte_arr = io.BytesIO()
-        bg.save(img_byte_arr, format='JPEG')
-        pdf.ln(5)
-        pdf.cell(200, 10, txt="Signature:", ln=True)
-        pdf.image(img_byte_arr, x=10, y=pdf.get_y(), w=50)
-        
-    return pdf.output(dest='S').encode('latin-1')
+# --- 2. 介面與表單內容 ---
+st.set_page_config(page_title="大豐環保安全系統", layout="centered")
+st.title("🛡️ 大豐環保安全作業管理系統")
 
-# --- 3. Streamlit 介面 ---
-st.title("大豐環保安全系統")
-
-tab1, tab2, tab3 = st.tabs(["環境檢查", "施工申請", "動火作業許可"])
+tab1, tab2, tab3 = st.tabs(["📋 環境檢查", "🏗️ 施工申請", "🔥 動火作業許可"])
 
 with tab3:
-    st.header("🔥 動火作業許可證")
+    st.header("動火作業許可證申請")
     
     col1, col2 = st.columns(2)
     with col1:
-        company = st.text_input("施工廠商", key="fire_co")
-        worker = st.text_input("作業負責人", key="fire_work")
+        company = st.text_input("施工廠商", placeholder="請輸入廠商全名", key="co_f")
+        location = st.text_input("施工地點", placeholder="例如：倉庫後方", key="loc_f")
     with col2:
-        location = st.text_input("施工地點", key="fire_loc")
-        target = st.text_input("動火對象", key="fire_obj")
+        worker = st.text_input("作業負責人", placeholder="請輸入負責人姓名", key="work_f")
+        hot_type = st.selectbox("動火類型", ["電焊", "氧乙炔切割", "砂輪機切削", "其他"], key="type_f")
+
+    st.subheader("✅ 安全檢查項目")
+    c1, c2 = st.columns(2)
+    with c1:
+        check1 = st.checkbox("清除周遭易燃物 (10公尺內)")
+        check2 = st.checkbox("備妥滅火器且壓力正常")
+    with c2:
+        check3 = st.checkbox("派駐專人監護")
+        check4 = st.checkbox("施工人員穿戴防護具")
 
     st.write("---")
-    st.write("手寫簽名確認：")
+    st.write("✍️ **作業負責人手寫簽名：**")
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)",
-        stroke_width=3,
+        stroke_width=2,
         stroke_color="#000000",
         background_color="#eeeeee",
         height=150,
-        key="sign_fire",
+        key="sign_fire_final",
     )
 
-    if st.button("完成提交並上傳"):
+    if st.button("確認提交並產生 PDF"):
         if not company or not worker:
-            st.warning("請填寫廠商與負責人名稱")
+            st.error("請填寫廠商與負責人名稱！")
+        elif not (check1 and check2 and check3 and check4):
+            st.warning("所有安全檢查項目皆須勾選才能提交！")
         else:
-            with st.spinner("正在處理中..."):
-                data_summary = {
-                    "Company": company,
-                    "Responsible": worker,
-                    "Location": location,
-                    "Object": target,
-                    "Date": str(date.today())
-                }
+            with st.spinner("正在產生 PDF 並存入雲端..."):
+                # --- PDF 修正寫法 ---
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", 'B', 16)
+                pdf.cell(200, 10, txt="DAFENG Hot Work Permit", ln=True, align='C')
+                pdf.ln(10)
+                pdf.set_font("Arial", size=12)
+                pdf.cell(200, 10, txt=f"Date: {date.today()}", ln=True)
+                pdf.cell(200, 10, txt=f"Company: {company}", ln=True)
+                pdf.cell(200, 10, txt=f"Responsible: {worker}", ln=True)
                 
-                # 生成 PDF
-                pdf_output = create_pdf(data_summary, canvas_result)
+                # 核心修正：output() 直接返回 bytes，不帶引數
+                pdf_bytes = pdf.output() 
                 
-                # 上傳 Drive
                 fname = f"Fire_{date.today()}_{company}.pdf"
-                fid = upload_to_drive(pdf_output, fname)
+                fid = upload_to_drive(pdf_bytes, fname)
                 
                 if fid:
-                    st.success(f"✅ 上傳成功！檔案存放在 Google Drive (ID: {fid})")
+                    st.success(f"✅ 提交成功！檔案 ID: {fid}")
                     st.balloons()
