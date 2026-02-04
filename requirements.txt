@@ -1,5 +1,7 @@
 streamlit
 streamlit-gsheets
-streamlit-drawable_canvas
+streamlit-drawable-canvas
 google-api-python-client
 google-auth
+pandas
+fpdf2
