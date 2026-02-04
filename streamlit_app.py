@@ -33,7 +33,7 @@ for p in pages:
     if st.sidebar.button(p):
         st.session_state.current_page = p
 
-# --- 危害告知單頁面 (保持原樣) ---
+# --- 1. 危害告知單 (保持不動) ---
 if st.session_state.current_page == "1. 施工安全危害告知單":
     st.markdown('<div class="factory-header">大豐環保 (全興廠)</div>', unsafe_allow_html=True)
     st.title("🚧 承攬商施工安全危害告知單")
@@ -60,7 +60,7 @@ if st.session_state.current_page == "1. 施工安全危害告知單":
         st.session_state.current_page = "2. 承攬商工具箱會議紀錄表"
         st.rerun()
 
-# --- 頁面 2：工具箱會議紀錄表 (恢復你要求的版本) ---
+# --- 2. 工具箱會議紀錄表 (保持不動) ---
 elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
     st.title("📝 承攬商工具箱會議紀錄表")
     with st.container(border=True):
@@ -74,17 +74,14 @@ elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
             st.write(f"**施工位置:** {st.session_state.get('location','')}")
             st.number_input("總作業人數", min_value=1, step=1, key="tool_total_num")
             st.write(f"**會議日期:** {date.today()}")
-
     with st.container(border=True):
         st.subheader("✅ 宣導事項勾選")
         hazard_options = ["墜落", "跌倒", "火災", "中毒", "缺氧", "衝撞", "感電", "物體飛落", "切、割、夾、捲", "爆炸", "物體破裂", "物體倒塌"]
         cols = st.columns(4)
         for i, opt in enumerate(hazard_options):
             cols[i % 4].checkbox(opt, key=f"tool_haz_{opt}")
-
     st.subheader("✍️ 當日施工人員宣導確認簽名 (大空格)")
     st_canvas(stroke_width=3, background_color="#eee", height=250, key="sign_workers_all")
-
     col_sign1, col_sign2 = st.columns(2)
     with col_sign1:
         st.write("承辦單位人員簽名")
@@ -92,7 +89,6 @@ elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
     with col_sign2:
         st.write("工安人員簽名")
         st_canvas(stroke_width=3, background_color="#fafafa", height=120, key="sign_safety_final")
-
     if st.button("確認提交工具箱會議"):
         if "火災爆炸" in st.session_state.get('selected_hazards', []):
             st.session_state.current_page = "3. 動火作業許可證"
@@ -100,7 +96,7 @@ elif st.session_state.current_page == "2. 承攬商工具箱會議紀錄表":
             st.session_state.current_page = "4. 特殊危害作業許可證"
         st.rerun()
 
-# --- 頁面 3：動火作業許可證 (依要求大改) ---
+# --- 3. 動火作業許可證 (保持不動) ---
 elif st.session_state.current_page == "3. 動火作業許可證":
     st.title("🔥 動火作業許可證")
     with st.container(border=True):
@@ -115,14 +111,12 @@ elif st.session_state.current_page == "3. 動火作業許可證":
             f_date = c1.date_input("日期", value=date.today(), key="f_date")
             f_start = c2.number_input("起(時)", 0, 23, 8, key="f_start")
             f_end = c3.number_input("迄(時)", 0, 23, 17, key="f_end")
-
     st.subheader("✅ 動火檢查表")
     h_col1, h_col2, h_col3, h_col4 = st.columns([4, 1, 1, 1])
     h_col1.write("**檢查重點**")
     h_col2.write("承攬商")
     h_col3.write("監工")
     h_col4.write("環安")
-
     check_items = ["3公尺內備有正常滅火器", "動火時旁邊有警戒人員", "排除管線內可燃物", "清除週邊11公尺內可燃物", "工作區域地面防火保護", "隔離火警偵測器"]
     for idx, item in enumerate(check_items):
         c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
@@ -130,7 +124,6 @@ elif st.session_state.current_page == "3. 動火作業許可證":
         c2.checkbox("", key=f"f_v_{idx}", label_visibility="collapsed")
         c3.checkbox("", key=f"f_s_{idx}", label_visibility="collapsed")
         c4.checkbox("", key=f"f_h_{idx}", label_visibility="collapsed")
-
     st.divider()
     st.subheader("✍️ 簽名欄位")
     sig1, sig2 = st.columns(2)
@@ -140,17 +133,65 @@ elif st.session_state.current_page == "3. 動火作業許可證":
     with sig2:
         st.write("監工單位簽名")
         st_canvas(stroke_width=3, background_color="#fafafa", height=120, key="sign_fire_s")
-
     if st.button("完成動火許可提交"):
         st.success("動火作業申請成功！")
         st.session_state.current_page = "1. 施工安全危害告知單"
         st.rerun()
 
-# --- 頁面 4：特殊危害 (保持不動) ---
+# --- 4. 特殊危害作業許可證 (本次大改區) ---
 elif st.session_state.current_page == "4. 特殊危害作業許可證":
     st.title("🛡️ 特殊危害作業許可證")
-    st.checkbox("指派人員監視")
-    st_canvas(stroke_width=3, background_color="#eee", height=150, key="sign_spec")
-    if st.button("完成申請"):
+    with st.container(border=True):
+        st.subheader("📋 特殊作業申請資訊")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**作業類別**")
+            type_cols = st.columns(2)
+            spec_types = ["局限空間", "吊掛", "高架", "危險管路拆卸鑽孔", "送電作業"]
+            for i, t in enumerate(spec_types):
+                type_cols[i % 2].checkbox(t, key=f"spec_type_{t}")
+            st.text_input("連絡電話", key="spec_tel")
+        with col2:
+            st.number_input("施工人數", min_value=1, step=1, key="spec_workers")
+            st.write("**作業期間 (限當日)**")
+            sc1, sc2, sc3 = st.columns([2, 1, 1])
+            s_date = sc1.date_input("日期", value=date.today(), key="s_date")
+            s_start = sc2.number_input("起(時)", 0, 23, 8, key="s_start")
+            s_end = sc3.number_input("迄(時)", 0, 23, 17, key="s_end")
+
+    st.subheader("✅ 特殊危害作業檢查表")
+    sh_col1, sh_col2, sh_col3, sh_col4 = st.columns([4, 1, 1, 1])
+    sh_col1.write("**檢查重點**")
+    sh_col2.write("承攬商")
+    sh_col3.write("監工")
+    sh_col4.write("環安")
+
+    spec_checks = [
+        "指派一人以上之安全警戒人員，隨時監視、聯絡作業?",
+        "工安單位測定作業場所空氣中氧氣濃度在19%以上?",
+        "備有空氣呼吸氣器、安全帶(索)等防護器具使勞工確實戴用?",
+        "告知作業之勞工施工區域內之潛在危害性?",
+        "作業區域已設置三角錐或警示帶隔離，嚴禁無關人員進入?"
+    ]
+
+    for idx, item in enumerate(spec_checks):
+        c1, c2, c3, c4 = st.columns([4, 1, 1, 1])
+        c1.write(f"{idx+1}. {item}")
+        c2.checkbox("", key=f"s_v_{idx}", label_visibility="collapsed")
+        c3.checkbox("", key=f"s_s_{idx}", label_visibility="collapsed")
+        c4.checkbox("", key=f"s_h_{idx}", label_visibility="collapsed")
+
+    st.divider()
+    st.subheader("✍️ 簽名核可")
+    ssig1, ssig2 = st.columns(2)
+    with ssig1:
+        st.write("施工單位簽名")
+        st_canvas(stroke_width=3, background_color="#fafafa", height=120, key="sign_spec_v")
+    with ssig2:
+        st.write("監工人員簽名")
+        st_canvas(stroke_width=3, background_color="#fafafa", height=120, key="sign_spec_s")
+
+    if st.button("完成特殊危害許可提交"):
+        st.success("特殊危害作業申請成功！")
         st.session_state.current_page = "1. 施工安全危害告知單"
         st.rerun()
