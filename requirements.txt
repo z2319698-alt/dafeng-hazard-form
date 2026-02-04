@@ -1,6 +1,5 @@
-pandas
 streamlit
-st-gsheets-connection
-streamlit-drawable-canvas==0.9.3
-FPDF
-Pillow
+streamlit-gsheets
+fpdf2
+google-api-python-client
+google-auth
