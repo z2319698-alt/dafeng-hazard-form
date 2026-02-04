@@ -58,4 +58,27 @@ if st.session_state.current_page == "1. 施工安全危害告知單":
             st.session_state.worker_name = st.text_input("施作人員姓名", placeholder="請輸入姓名")
         with col2:
             st.session_state.work_date = st.date_input("施工日期", value=date.today())
-            st.session_state.location = st.selectbox("施工地點", ["請選擇", "粉碎課", "造粒課", "玻璃屋", "地磅室", "廠內周邊
+            st.session_state.location = st.selectbox("施工地點", ["請選擇", "粉碎課", "造粒課", "玻璃屋", "地磅室", "廠內周邊設施"])
+
+    with st.container(border=True):
+        st.subheader("⚠️ 2. 危害因素告知")
+        st.session_state.selected_hazards = st.multiselect("勾選本次作業危害項目", list(HAZARD_DETAILS.keys()))
+
+    st.subheader("📋 3. 安全衛生規定")
+    rules = [
+        "一、為防止尖銳物(玻璃、鐵釘、廢棄針頭)切割危害，應佩戴安全手套、安全鞋及防護具。",
+        "二、設備維修需經主管同意並掛「維修中/保養中」牌。",
+        "三、場內限速 15 公里/小時，嚴禁超速。",
+        "四、工作場所禁止吸菸、飲食或飲酒。",
+        "五、操作機具需持證照且經主管同意，相關責任由借用者自負。",
+        "六、嚴禁貨叉載人。堆高機熄火需貨叉置地、拔鑰匙歸還。",
+        "七、重機作業半徑內禁止進入，17噸(含)以上作業應放三角錐。",
+        "八、1.8公尺以上高處作業或3.5噸以上車頭作業均須配戴安全帽。",
+        "九、電路維修需戴絕緣具、斷電掛牌並指派一人全程監視。",
+        "十、動火作業需主管同意、備滅火器(3公尺內)並配戴護目鏡。",
+        "十一、清運車輛啟動前應確認周遭並發出信號。",
+        "十二、開啟尾門應站側面，先開小縫確認無誤後再全面開啟。",
+        "十三、未達指定傾貨區前，嚴禁私自開啟車斗。",
+        "十四、行駛中嚴禁站立車斗，卸貨完確認車斗收妥方可駛離。",
+        "十五、人員行經廠內出入口應行走人行道，遵守「停、看、行」。"
+    ]
