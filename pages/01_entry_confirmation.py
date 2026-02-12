@@ -36,7 +36,7 @@ with st.form("entry_confirmation_form"):
     work_project = st.text_input("施工項目名稱", placeholder="例如：二樓空壓機濾網更換")
     work_description = st.text_area("具體施工內容簡述", placeholder="請簡述作業流程...")
     
-    # 高風險作業勾選 (這會決定後續是否需要動火單或特殊作業單)
+    # 高風險作業勾選
     st.write("**⚠️ 高風險作業類別 (複選)：**")
     hazards = st.columns(3)
     is_fire = hazards[0].checkbox("動火作業")
@@ -53,8 +53,8 @@ with st.form("entry_confirmation_form"):
     check_doc3 = c1.checkbox("特種作業證照核對完畢")
     check_doc4 = c2.checkbox("機具合格證(如吊車/堆高機)")
 
-    # 提交按鈕
-    submit_btn = st.form_submit_with_button("核准進場並發佈任務")
+    # 提交按鈕 - 已修正函數名稱
+    submit_btn = st.form_submit_button("核准進場並發佈任務")
 
 # 4. 提交後的邏輯處理
 if submit_btn:
@@ -68,7 +68,7 @@ if submit_btn:
         st.session_state['company'] = vendor_name
         st.session_state['location'] = work_location
         st.session_state['project_name'] = work_project
-        st.session_state['is_fire_work'] = is_fire # 紀錄是否需要動火單
+        st.session_state['is_fire_work'] = is_fire 
         
         st.success(f"✅ 進場確認單已成功送出！")
         st.info(f"廠商 **{vendor_name}** 現在可以前往左側選單之『02 施工安全危害告知單』進行簽署。")
